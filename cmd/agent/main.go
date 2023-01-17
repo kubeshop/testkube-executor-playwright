@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/chooco13/testkube-executor-playwright/pkg/runner"
+	"github.com/kubeshop/testkube-executor-playwright/pkg/runner"
 	"github.com/kubeshop/testkube/pkg/executor/agent"
 	"github.com/kubeshop/testkube/pkg/executor/output"
 )
