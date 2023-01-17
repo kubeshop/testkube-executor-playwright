@@ -13,5 +13,5 @@ RUN mkdir /home/runner
 WORKDIR /home/runner/
 COPY --from=0 /runner /bin/runner
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=true
-ENV DEPENDENCY_MANAGER=npm
+ENV DEPENDENCY_MANAGER=yarn
 ENTRYPOINT ["/bin/runner"]

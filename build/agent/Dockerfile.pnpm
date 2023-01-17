@@ -9,9 +9,10 @@ RUN cd cmd/agent;go build -o /runner -mod mod -a .
 
 FROM mcr.microsoft.com/playwright:v1.29.2-focal
 RUN apt-get update && apt-get install -y zip
+RUN npm install -g pnpm
 RUN mkdir /home/runner
 WORKDIR /home/runner/
 COPY --from=0 /runner /bin/runner
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=true
-ENV DEPENDENCY_MANAGER=npm
+ENV DEPENDENCY_MANAGER=pnpm
 ENTRYPOINT ["/bin/runner"]
