@@ -60,7 +60,7 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 	// check that the datadir exists
 	_, err = os.Stat(r.Params.Datadir)
 	if errors.Is(err, os.ErrNotExist) {
-		return result, fmt.Errorf("Datadir not exist: %w\n\n", err)
+		return result, fmt.Errorf("Datadir not exist: %w", err)
 	}
 
 	runPath := filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.Path)
@@ -96,22 +96,9 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 		Output:     string(out),
 	}
 
-	projectPath := filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.Path)
 	if r.Params.ScrapperEnabled {
-		if _, err := executor.Run(projectPath, "mkdir", nil, "playwright-report-zip"); err != nil {
-			return result, fmt.Errorf("%s mkdir error: %w\n\n%s", r.dependency, err, out)
-		}
-
-		if _, err := executor.Run(projectPath, "zip", nil, "playwright-report-zip/playwright-report.zip", "-r", "playwright-report"); err != nil {
-			return result, fmt.Errorf("%s zip error: %w\n\n%s", r.dependency, err, out)
-		}
-
-		directories := []string{
-			filepath.Join(projectPath, "playwright-report-zip"),
-		}
-		err := r.Scraper.Scrape(execution.Id, directories)
-		if err != nil {
-			return result.WithErrors(fmt.Errorf("scrape artifacts error: %w", err)), nil
+		if err = scrapeArtifacts(r, execution); err != nil {
+			return result, err	
 		}
 	}
 
@@ -121,4 +108,28 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 // GetType returns runner type
 func (r *PlaywrightRunner) GetType() runner.Type {
 	return runner.TypeMain
+}
+
+func scrapeArtifacts(r *PlaywrightRunner, execution testkube.Execution) (err error) {
+	projectPath := filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.Path)
+
+	originalName := "playwright-report"
+	compressedName := originalName + "-zip"
+
+	if _, err := executor.Run(projectPath, "mkdir", nil, compressedName); err != nil {
+		return fmt.Errorf("mkdir error: %w", err)
+	}
+
+	if _, err := executor.Run(projectPath, "zip", nil, compressedName + "/" + originalName + ".zip", "-r", originalName); err != nil {
+		return fmt.Errorf("zip error: %w", err)
+	}
+
+	directories := []string{
+		filepath.Join(projectPath, compressedName),
+	}
+	if err := r.Scraper.Scrape(execution.Id, directories); err != nil {
+		return fmt.Errorf("scrape artifacts error: %w", err)
+	}
+
+	return nil
 }
