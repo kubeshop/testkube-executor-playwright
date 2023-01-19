@@ -2,7 +2,7 @@
 
 # Welcome to Testkube Playwright Executor
 
-Testkube Playwright Executor is test executor for [Testkube](https://testkube.io).  
+Testkube Playwright Executor is the test executor for [Testkube](https://testkube.io).  
 [Playwright](https://playwright.dev/) is a framework for Web Testing and Automation.
 
 # Issues and enchancements
