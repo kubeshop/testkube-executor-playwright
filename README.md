@@ -11,7 +11,13 @@ Please follow the main [Testkube repository](https://github.com/kubeshop/testkub
 
 ## Details
 
-- TODO write details
+If you use HTML Reporter. please disable auto open reporter in `playwright.config.js`.
+```
+reporter: [
+  ['html', { open: 'never' }]
+],
+```
+Otherwise, the test will not automatically terminate when the test fails.
 
 ## Architecture
 
