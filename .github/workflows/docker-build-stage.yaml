@@ -1,15 +1,11 @@
 name: Docker images building and pushing
 on:
   push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+-*"
+    branches:
+      - main
 
 jobs:
-  allplaywrights:
-    strategy:
-      matrix:
-        version: [npm, pnpm, yarn]
+  docker:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,26 +23,33 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Docker meta for Playwright executor ${{ matrix.version }}
-        id: meta_playwright_executor_default
+      - name: Docker meta for Playwright executor
+        id: meta_playwright_executor
         uses: docker/metadata-action@v3
         with:
           images: kubeshop/testkube-playwright-executor
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             type=sha
-          flavor: |
-            prefix=
-            suffix=-${{ matrix.version }}
 
-      - name: Build ${{ matrix.version }} Playwright Executor
+      - name: Build Playwright Runner
         uses: docker/bake-action@v1
         with:
           files: |
-            build/playwright-executor/docker-bake.hcl
+            build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
-          targets: ${{ matrix.version }}
+          targets: npm
           push: true
+
+      - name: Output commit sha
+        id: github_sha
+        run: |
+          echo "::set-output name=sha_short::${GITHUB_SHA::7}"
+
+      #Trigger Helm repo workflow to deploy Dashboard to Stage cluster
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.CI_BOT_TOKEN }}
+          repository: kubeshop/helm-charts
+          event-type: trigger-workflow-executor
+          client-payload: '{"image_tag_executor": "sha-${{ steps.github_sha.outputs.sha_short }}", "executor_name": "playwright"}'
