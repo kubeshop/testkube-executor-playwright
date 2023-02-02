@@ -1,9 +1,9 @@
 name: Docker images building and pushing
 on:
   push:
-    # tags:
-      # - "v[0-9]+.[0-9]+.[0-9]+"
-      # - "v[0-9]+.[0-9]+.[0-9]+-*"
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
 
 jobs:
   allplaywrights:
@@ -49,4 +49,4 @@ jobs:
             build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
           targets: ${{ matrix.version }}
-          push: false
+          push: true
