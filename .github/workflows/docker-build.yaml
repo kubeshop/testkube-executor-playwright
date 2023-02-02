@@ -13,23 +13,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Docker meta for Playwright executor ${{ matrix.version }}
         id: meta_playwright_executor_default
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: kubeshop/testkube-playwright-executor
           tags: |
@@ -43,10 +43,10 @@ jobs:
             suffix=-${{ matrix.version }}
 
       - name: Build ${{ matrix.version }} Playwright Executor
-        uses: docker/bake-action@v1
+        uses: docker/bake-action@v2
         with:
           files: |
-            build/playwright-executor/docker-bake.hcl
+            build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
           targets: ${{ matrix.version }}
           push: true
