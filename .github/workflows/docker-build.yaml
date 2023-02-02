@@ -43,7 +43,7 @@ jobs:
             suffix=-${{ matrix.version }}
 
       - name: Build ${{ matrix.version }} Playwright Executor
-        uses: docker/bake-action@v1
+        uses: docker/bake-action@v2
         with:
           files: |
             build/playwright-executor/docker-bake.hcl
