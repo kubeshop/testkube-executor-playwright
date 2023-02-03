@@ -46,7 +46,7 @@ jobs:
         uses: docker/bake-action@v1
         with:
           files: |
-            build/playwright-executor/docker-bake.hcl
+            build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
           targets: ${{ matrix.version }}
           push: true
