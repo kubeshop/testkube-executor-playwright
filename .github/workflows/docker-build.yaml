@@ -43,6 +43,7 @@ jobs:
       - name: Build Default Playwright npm executor
         uses: docker/bake-action@v1
         with:
+          tags: ${{ steps.meta_playwright_executor.outputs.tags }}
           files: |
             build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
@@ -88,6 +89,7 @@ jobs:
       - name: Build ${{ matrix.version }} Playwright Executor
         uses: docker/bake-action@v2
         with:
+          tags: ${{ steps.meta_playwright_executor.outputs.tags }}
           files: |
             build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
