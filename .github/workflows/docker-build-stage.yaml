@@ -34,7 +34,6 @@ jobs:
       - name: Build Playwright Runner
         uses: docker/bake-action@v1
         with:
-          tags: ${{ steps.meta_playwright_executor.outputs.tags }}
           files: |
             build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}

@@ -43,7 +43,6 @@ jobs:
       - name: Build Default Playwright npm executor
         uses: docker/bake-action@v1
         with:
-          tags: ${{ steps.meta_playwright_executor.outputs.tags }}
           files: |
             build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
@@ -72,7 +71,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Docker meta for Playwright executor ${{ matrix.version }}
-        id: meta_playwright_executor_default
+        id: meta_playwright_executor
         uses: docker/metadata-action@v4
         with:
           images: kubeshop/testkube-playwright-executor
@@ -89,7 +88,6 @@ jobs:
       - name: Build ${{ matrix.version }} Playwright Executor
         uses: docker/bake-action@v2
         with:
-          tags: ${{ steps.meta_playwright_executor.outputs.tags }}
           files: |
             build/agent/docker-bake.hcl
             ${{ steps.meta_playwright_executor.outputs.bake-file }}
