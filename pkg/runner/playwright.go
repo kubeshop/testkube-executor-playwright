@@ -62,7 +62,6 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 	if execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
 		runPath = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.WorkingDir)
 	}
-	output.PrintLog(fmt.Sprintf("%s Test content checked", ui.IconCheckMark))
 
 	if _, err := os.Stat(filepath.Join(runPath, "package.json")); err == nil {
 		out, err := executor.Run(runPath, r.dependency, nil, "install")
@@ -70,7 +69,7 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 			output.PrintLog(fmt.Sprintf("%s Dependency installation error %s", ui.IconCross, r.dependency))
 			return result, fmt.Errorf("%s install error: %w\n\n%s", r.dependency, err, out)
 		}
-		output.PrintLog(fmt.Sprintf("%s Dependencies installed", ui.IconBox))
+		output.PrintLog(fmt.Sprintf("%s Dependencies successfully installed", ui.IconBox))
 	}
 
 	runner := "npx"
@@ -87,6 +86,7 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 	output.PrintEvent("Running", runPath, "playwright", args)
 	out, err := executor.Run(runPath, runner, envManager, args...)
 	if err != nil {
+		output.PrintLog(fmt.Sprintf("%s Test run failed", ui.IconCross))
 		return result, fmt.Errorf("playwright test error: %w\n\n%s", err, out)
 	}
 
@@ -119,12 +119,12 @@ func scrapeArtifacts(r *PlaywrightRunner, execution testkube.Execution) (err err
 	compressedName := originalName + "-zip"
 
 	if _, err := executor.Run(projectPath, "mkdir", nil, compressedName); err != nil {
-		output.PrintLog(fmt.Sprintf("%s Test run failed: making dir %s", ui.IconCross, compressedName))
+		output.PrintLog(fmt.Sprintf("%s Artifact scraping failed: making dir %s", ui.IconCross, compressedName))
 		return fmt.Errorf("mkdir error: %w", err)
 	}
 
 	if _, err := executor.Run(projectPath, "zip", nil, compressedName+"/"+originalName+".zip", "-r", originalName); err != nil {
-		output.PrintLog(fmt.Sprintf("%s Test run failed: zip %s", ui.IconCross, originalName))
+		output.PrintLog(fmt.Sprintf("%s Artifact scraping failed: zipping reports %s", ui.IconCross, originalName))
 		return fmt.Errorf("zip error: %w", err)
 	}
 
@@ -132,7 +132,7 @@ func scrapeArtifacts(r *PlaywrightRunner, execution testkube.Execution) (err err
 		filepath.Join(projectPath, compressedName),
 	}
 	if err := r.Scraper.Scrape(execution.Id, directories); err != nil {
-		output.PrintLog(fmt.Sprintf("%s Test run failed: scrape directories", ui.IconCross))
+		output.PrintLog(fmt.Sprintf("%s Artifact scraping failed", ui.IconCross))
 		return fmt.Errorf("scrape artifacts error: %w", err)
 	}
 
