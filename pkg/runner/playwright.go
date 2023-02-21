@@ -6,31 +6,22 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kelseyhightower/envconfig"
 	"github.com/kubeshop/testkube/pkg/api/v1/testkube"
+	"github.com/kubeshop/testkube/pkg/envs"
 	"github.com/kubeshop/testkube/pkg/executor"
 	"github.com/kubeshop/testkube/pkg/executor/content"
+	"github.com/kubeshop/testkube/pkg/executor/env"
+	"github.com/kubeshop/testkube/pkg/executor/output"
 	"github.com/kubeshop/testkube/pkg/executor/runner"
 	"github.com/kubeshop/testkube/pkg/executor/scraper"
-	"github.com/kubeshop/testkube/pkg/executor/secret"
+	"github.com/kubeshop/testkube/pkg/ui"
 )
 
-type Params struct {
-	Endpoint        string // RUNNER_ENDPOINT
-	AccessKeyID     string // RUNNER_ACCESSKEYID
-	SecretAccessKey string // RUNNER_SECRETACCESSKEY
-	Location        string // RUNNER_LOCATION
-	Token           string // RUNNER_TOKEN
-	Ssl             bool   // RUNNER_SSL
-	ScrapperEnabled bool   // RUNNER_SCRAPPERENABLED
-	Datadir         string // RUNNER_DATADIR
-}
-
 func NewPlaywrightRunner(dependency string) (*PlaywrightRunner, error) {
-	var params Params
-	err := envconfig.Process("runner", &params)
+	output.PrintLog(fmt.Sprintf("%s Preparing test runner", ui.IconTruck))
+	params, err := envs.LoadTestkubeVariables()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not initialize Playwright runner variables: %w", err)
 	}
 
 	return &PlaywrightRunner{
@@ -42,6 +33,7 @@ func NewPlaywrightRunner(dependency string) (*PlaywrightRunner, error) {
 			params.SecretAccessKey,
 			params.Location,
 			params.Token,
+			params.Bucket,
 			params.Ssl,
 		),
 		dependency: dependency,
@@ -50,29 +42,34 @@ func NewPlaywrightRunner(dependency string) (*PlaywrightRunner, error) {
 
 // PlaywrightRunner - implements runner interface used in worker to start test execution
 type PlaywrightRunner struct {
-	Params     Params
+	Params     envs.Params
 	Fetcher    content.ContentFetcher
 	Scraper    scraper.Scraper
 	dependency string
 }
 
 func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.ExecutionResult, err error) {
+	output.PrintLog(fmt.Sprintf("%s Preparing for test run", ui.IconTruck))
+
 	// check that the datadir exists
-	_, err = os.Stat(r.Params.Datadir)
+	_, err = os.Stat(r.Params.DataDir)
 	if errors.Is(err, os.ErrNotExist) {
+		output.PrintLog(fmt.Sprintf("%s Datadir %s does not exist", ui.IconCross, r.Params.DataDir))
 		return result, fmt.Errorf("Datadir not exist: %w", err)
 	}
 
-	runPath := filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.Path)
+	runPath := filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.Path)
 	if execution.Content.Repository != nil && execution.Content.Repository.WorkingDir != "" {
-		runPath = filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.WorkingDir)
+		runPath = filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.WorkingDir)
 	}
 
 	if _, err := os.Stat(filepath.Join(runPath, "package.json")); err == nil {
 		out, err := executor.Run(runPath, r.dependency, nil, "install")
 		if err != nil {
+			output.PrintLog(fmt.Sprintf("%s Dependency installation error %s", ui.IconCross, r.dependency))
 			return result, fmt.Errorf("%s install error: %w\n\n%s", r.dependency, err, out)
 		}
+		output.PrintLog(fmt.Sprintf("%s Dependencies successfully installed", ui.IconBox))
 	}
 
 	runner := "npx"
@@ -83,15 +80,17 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 	args := []string{"playwright", "test"}
 	args = append(args, execution.Args...)
 
-	envManager := secret.NewEnvManagerWithVars(execution.Variables)
-	envManager.GetVars(envManager.Variables)
+	envManager := env.NewManagerWithVars(execution.Variables)
+	envManager.GetReferenceVars(envManager.Variables)
 
+	output.PrintEvent("Running", runPath, "playwright", args)
 	out, err := executor.Run(runPath, runner, envManager, args...)
 	if err != nil {
+		output.PrintLog(fmt.Sprintf("%s Test run failed", ui.IconCross))
 		return result, fmt.Errorf("playwright test error: %w\n\n%s", err, out)
 	}
 
-	out = envManager.Obfuscate(out)
+	out = envManager.ObfuscateSecrets(out)
 	result = testkube.ExecutionResult{
 		Status:     testkube.ExecutionStatusPassed,
 		OutputType: "text/plain",
@@ -104,6 +103,7 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 		}
 	}
 
+	output.PrintLog(fmt.Sprintf("%s Test run successful", ui.IconCheckMark))
 	return result, nil
 }
 
@@ -113,16 +113,18 @@ func (r *PlaywrightRunner) GetType() runner.Type {
 }
 
 func scrapeArtifacts(r *PlaywrightRunner, execution testkube.Execution) (err error) {
-	projectPath := filepath.Join(r.Params.Datadir, "repo", execution.Content.Repository.Path)
+	projectPath := filepath.Join(r.Params.DataDir, "repo", execution.Content.Repository.Path)
 
 	originalName := "playwright-report"
 	compressedName := originalName + "-zip"
 
 	if _, err := executor.Run(projectPath, "mkdir", nil, compressedName); err != nil {
+		output.PrintLog(fmt.Sprintf("%s Artifact scraping failed: making dir %s", ui.IconCross, compressedName))
 		return fmt.Errorf("mkdir error: %w", err)
 	}
 
 	if _, err := executor.Run(projectPath, "zip", nil, compressedName+"/"+originalName+".zip", "-r", originalName); err != nil {
+		output.PrintLog(fmt.Sprintf("%s Artifact scraping failed: zipping reports %s", ui.IconCross, originalName))
 		return fmt.Errorf("zip error: %w", err)
 	}
 
@@ -130,6 +132,7 @@ func scrapeArtifacts(r *PlaywrightRunner, execution testkube.Execution) (err err
 		filepath.Join(projectPath, compressedName),
 	}
 	if err := r.Scraper.Scrape(execution.Id, directories); err != nil {
+		output.PrintLog(fmt.Sprintf("%s Artifact scraping failed", ui.IconCross))
 		return fmt.Errorf("scrape artifacts error: %w", err)
 	}
 
