@@ -89,17 +89,21 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 	envManager.GetReferenceVars(envManager.Variables)
 
 	output.PrintEvent("Running", runPath, "playwright", args)
-	out, err := executor.Run(runPath, runner, envManager, args...)
-	if err != nil {
-		output.PrintLog(fmt.Sprintf("%s Test run failed", ui.IconCross))
-		return result, fmt.Errorf("playwright test error: %w\n\n%s", err, out)
-	}
-
+	out, runErr := executor.Run(runPath, runner, envManager, args...)
 	out = envManager.ObfuscateSecrets(out)
-	result = testkube.ExecutionResult{
-		Status:     testkube.ExecutionStatusPassed,
-		OutputType: "text/plain",
-		Output:     string(out),
+	if runErr != nil {
+		output.PrintLog(fmt.Sprintf("%s Test run failed", ui.IconCross))
+		result = testkube.ExecutionResult{
+			Status:     testkube.ExecutionStatusFailed,
+			OutputType: "text/plain",
+			Output:     fmt.Sprintf("playwright test error: %s\n\n%s", runErr.Error(), out),
+		}
+	} else {
+		result = testkube.ExecutionResult{
+			Status:     testkube.ExecutionStatusPassed,
+			OutputType: "text/plain",
+			Output:     string(out),
+		}
 	}
 
 	if r.Params.ScrapperEnabled {
@@ -108,8 +112,10 @@ func (r *PlaywrightRunner) Run(execution testkube.Execution) (result testkube.Ex
 		}
 	}
 
-	output.PrintLog(fmt.Sprintf("%s Test run successful", ui.IconCheckMark))
-	return result, nil
+	if runErr == nil {
+		output.PrintLog(fmt.Sprintf("%s Test run successful", ui.IconCheckMark))
+	}
+	return result, runErr
 }
 
 // GetType returns runner type
