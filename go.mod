@@ -3,7 +3,7 @@ module github.com/kubeshop/testkube-executor-playwright
 go 1.18
 
 require (
-	github.com/kubeshop/testkube v1.9.29
+	github.com/kubeshop/testkube v1.9.31
 	github.com/otiai10/copy v1.9.0
 )
 
