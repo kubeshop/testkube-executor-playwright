@@ -26,7 +26,7 @@ func NewPlaywrightRunner(dependency string) (*PlaywrightRunner, error) {
 
 	return &PlaywrightRunner{
 		Params:  params,
-		Fetcher: content.NewFetcher(""),
+		Fetcher: content.NewFetcher(params.DataDir),
 		Scraper: scraper.NewMinioScraper(
 			params.Endpoint,
 			params.AccessKeyID,
